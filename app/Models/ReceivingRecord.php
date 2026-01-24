@@ -22,11 +22,31 @@ class ReceivingRecord extends Model
         'amount_approved',
         'status',
         'user_id',
+        'district',
+        'category',
+        'type',
+        'requisitioner',
+        'served_request',
+        'remarks',
+        'processed_by_user_id',
+        'processed_at',
     ];
 
-    // Relationship with user
+    protected $casts = [
+        'date' => 'date',
+        'amount_approved' => 'decimal:2',
+        'processed_at' => 'datetime',
+    ];
+
+    // User who created this record (Receiving department)
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // User who processed this record (Department staff)
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by_user_id');
     }
 }
