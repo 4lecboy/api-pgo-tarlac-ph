@@ -22,11 +22,25 @@ class ReceivingRecord extends Model
         'amount_approved',
         'status',
         'user_id',
+        'district',
+        'category',
+        'type',
+        'requisitioner',
+        'served_request',
+        'remarks',
+        'processed_by_user_id',
+        'processed_at',
     ];
 
-    // Relationship with user
+    // Relationship with user (creator)
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    // Track which user processed the record
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by_user_id');
     }
 }

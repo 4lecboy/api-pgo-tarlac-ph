@@ -13,7 +13,7 @@ class ReceivingRecordController extends Controller
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user = auth('api')->user();
 
         // Only allow Receiving department
         if ($user->department !== 'receiving') {
@@ -36,7 +36,7 @@ class ReceivingRecordController extends Controller
      */
     public function show($id)
     {
-        $user = auth()->user();
+        $user = auth('api')->user();
 
         // Only allow Receiving department
         if ($user->department !== 'receiving') {
@@ -60,7 +60,7 @@ class ReceivingRecordController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
+        $user = auth('api')->user();
 
         // Only allow Receiving department
         if ($user->department !== 'receiving') {
@@ -72,13 +72,18 @@ class ReceivingRecordController extends Controller
             'date' => 'required|date',
             'particulars' => 'nullable|string',
             'department' => 'required|string',
+            'category' => 'nullable|string',
+            'type' => 'nullable|string',
             'organization_barangay' => 'nullable|string',
             'municipality_address' => 'nullable|string',
             'name' => 'nullable|string',
             'contact' => 'nullable|string',
             'action_taken' => 'nullable|string',
             'amount_approved' => 'nullable|numeric',
-            'status' => 'required|in:pending,approved,disapproved',
+            'status' => 'required|in:pending,approved,disapproved,served,on process,for releasing',
+            'requisitioner' => 'nullable|string',
+            'served_request' => 'nullable|string',
+            'remarks' => 'nullable|string',
         ]);
 
         $validated['user_id'] = $user->id;

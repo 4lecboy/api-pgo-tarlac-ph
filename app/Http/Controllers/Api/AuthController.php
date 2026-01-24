@@ -26,7 +26,12 @@ class AuthController extends Controller
             ], 500);
         }
 
-        $user = auth()->user();
+        // Since attempt was successful, we can retrieve the user
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found after successful login attempt'], 500);
+        }
 
         // Define all possible departments/pages
         $allDepartments = [
@@ -49,7 +54,6 @@ class AuthController extends Controller
 
 
         return response()->json([
-            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -57,9 +61,19 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'department' => $user->department,
-                'accessible_pages' => $accessiblePages, // <<< added here
+                'accessible_pages' => $accessiblePages,
             ]
-        ]);
+        ])->cookie(
+            'token',
+            $token,
+            config('jwt.ttl'),
+            '/',
+            null,
+            false, // Set to true if using HTTPS
+            true,  // HttpOnly
+            false, // Raw
+            'Lax'  // SameSite
+        );
     }
 
 
@@ -70,7 +84,8 @@ class AuthController extends Controller
             // Invalidate the token
             JWTAuth::invalidate(JWTAuth::getToken());
 
-            return response()->json(['message' => 'Successfully logged out']);
+            return response()->json(['message' => 'Successfully logged out'])
+                ->cookie('token', null, -1, '/');
         } catch (\PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException $e) {
             return response()->json(['error' => 'Failed to logout, please try again'], 500);
         }
@@ -80,6 +95,6 @@ class AuthController extends Controller
     // AUTHENTICATED USER
     public function me()
     {
-        return response()->json(auth()->user());
+        return response()->json(auth('api')->user());
     }
 }

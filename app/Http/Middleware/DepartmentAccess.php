@@ -9,18 +9,22 @@ class DepartmentAccess
 {
     public function handle(Request $request, Closure $next, ...$departments)
     {
-        $user = auth()->user();
+        $user = auth('api')->user();
 
         if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['message' => 'Unauthenticated (DepartmentAccess)'], 401);
         }
 
         // Normalize department names
-        $userDept = strtolower($user->department);
+        $userDept = strtolower($user->department ?? '');
         $allowed = array_map('strtolower', $departments);
 
         if (!in_array($userDept, $allowed)) {
-            return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
+            return response()->json([
+                'error' => 'Forbidden: Access denied for your department',
+                'user_department' => $user->department,
+                'required_departments' => $departments
+            ], 403);
         }
 
         return $next($request);
