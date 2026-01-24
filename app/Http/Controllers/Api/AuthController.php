@@ -11,56 +11,71 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
-    {
-        $credentials = $request->only('email', 'password');
+   public function login(Request $request)
+{
+    $credentials = $request->only('email', 'password');
 
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['error' => 'Invalid credentials'], 401);
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Could not create token',
-                'message' => $e->getMessage()
-            ], 500);
+    try {
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['error' => 'Invalid credentials'], 401);
         }
-
-        $user = auth()->user();
-
-        // Define all possible departments/pages
-        $allDepartments = [
-            'Receiving',
-            'Social Service',
-            'Barangay Affairs',
-            'Financial Assistance',
-            'Use Of Facilities',
-            'Appointment Meeting',
-            'Use of Vehicle Ambulance',
-            'Other Request'
-        ];
-
-        $allDepartmentsLower = array_map('strtolower', $allDepartments);
-
-        $accessiblePages = in_array(
-            strtolower($user->department),
-            $allDepartmentsLower
-        ) ? [$user->department] : [];
-
-
+    } catch (\Exception $e) {
         return response()->json([
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'department' => $user->department,
-                'accessible_pages' => $accessiblePages, // <<< added here
-            ]
-        ]);
+            'error' => 'Could not create token',
+            'message' => $e->getMessage()
+        ], 500);
     }
+
+    $user = User::where('email', $credentials['email'])->first();
+
+    if (!$user) {
+        return response()->json(['error' => 'User not found after successful login attempt'], 500);
+    }
+
+    $allDepartments = [
+        'Receiving',
+        'Social Service',
+        'Barangay Affairs',
+        'Financial Assistance',
+        'Use Of Facilities',
+        'Appointment Meeting',
+        'Use of Vehicle Ambulance',
+        'Other Request'
+    ];
+
+    $allDepartmentsLower = array_map('strtolower', $allDepartments);
+
+    $accessiblePages = in_array(
+        strtolower($user->department),
+        $allDepartmentsLower
+    ) ? [$user->department] : [];
+
+    return response()->json([
+        'token' => $token,               // 👈 TOKEN SHOWN HERE
+        'token_type' => 'bearer',
+        'expires_in' => config('jwt.ttl') * 60, // seconds
+        'user' => [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'department' => $user->department,
+            'accessible_pages' => $accessiblePages,
+        ]
+    ])->cookie(
+        'token',
+        $token,
+        config('jwt.ttl'),
+        '/',
+        null,
+        false, // set true if HTTPS
+        true,  // HttpOnly
+        false,
+        'Lax'
+    );
+}
+
 
 
 
@@ -70,7 +85,8 @@ class AuthController extends Controller
             // Invalidate the token
             JWTAuth::invalidate(JWTAuth::getToken());
 
-            return response()->json(['message' => 'Successfully logged out']);
+            return response()->json(['message' => 'Successfully logged out'])
+                ->cookie('token', null, -1, '/');
         } catch (\PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException $e) {
             return response()->json(['error' => 'Failed to logout, please try again'], 500);
         }
@@ -80,6 +96,6 @@ class AuthController extends Controller
     // AUTHENTICATED USER
     public function me()
     {
-        return response()->json(auth()->user());
+        return response()->json(auth('api')->user());
     }
 }

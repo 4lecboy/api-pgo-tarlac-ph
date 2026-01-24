@@ -38,15 +38,19 @@ class ReceivingRecord extends Model
         'processed_at' => 'datetime',
     ];
 
-    // User who created this record (Receiving department)
+    /**
+     * User who created the record (Receiving department)
+     */
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // User who processed this record (Department staff)
+    /**
+     * User who processed the record (Department staff)
+     */
     public function processedBy()
     {
-        return $this->belongsTo(User::class, 'processed_by_user_id');
+        return $this->belongsTo(User::class, 'App\Models\User', 'processed_by_user_id');
     }
 }
