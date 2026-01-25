@@ -51,6 +51,14 @@ class ReceivingRecord extends Model
      */
     public function processedBy()
     {
-        return $this->belongsTo(User::class, 'App\Models\User', 'processed_by_user_id');
+        return $this->belongsTo(User::class, 'processed_by_user_id');
+    }
+
+    /**
+     * History of remarks added by different users/departments
+     */
+    public function remarksHistory()
+    {
+        return $this->hasMany(RecordRemark::class, 'receiving_record_id')->with('user')->orderBy('created_at', 'asc');
     }
 }

@@ -16,12 +16,12 @@ class ReceivingRecordController extends Controller
         $user = auth('api')->user();
 
         // Only allow Receiving department
-        if ($user->department !== 'receiving') {
+        if (strtolower($user->department) !== 'receiving') {
             return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
         }
 
         // Get all records with user information, ordered by latest first
-        $records = ReceivingRecord::with('user')
+        $records = ReceivingRecord::with(['user', 'remarksHistory.user'])
             ->orderBy('created_at', 'desc')
             ->paginate(15); // 15 records per page
 
@@ -39,11 +39,11 @@ class ReceivingRecordController extends Controller
         $user = auth('api')->user();
 
         // Only allow Receiving department
-        if ($user->department !== 'receiving') {
+        if (strtolower($user->department) !== 'receiving') {
             return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
         }
 
-        $record = ReceivingRecord::with('user')->find($id);
+        $record = ReceivingRecord::with(['user', 'remarksHistory.user'])->find($id);
 
         if (!$record) {
             return response()->json(['error' => 'Record not found'], 404);
@@ -63,7 +63,7 @@ class ReceivingRecordController extends Controller
         $user = auth('api')->user();
 
         // Only allow Receiving department
-        if ($user->department !== 'receiving') {
+        if (strtolower($user->department) !== 'receiving') {
             return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
         }
 
@@ -90,12 +90,45 @@ class ReceivingRecordController extends Controller
 
         $record = ReceivingRecord::create($validated);
 
-        // Load user relationship
-        $record->load('user');
+        // Add initial remark if provided
+        if (!empty($validated['remarks'])) {
+            \App\Models\RecordRemark::create([
+                'receiving_record_id' => $record->id,
+                'user_id' => $user->id,
+                'remark' => $validated['remarks']
+            ]);
+        }
+
+        // Load relationships including remarks history
+        $record->load(['user', 'remarksHistory.user']);
 
         return response()->json([
             'message' => 'Record created successfully',
             'record' => $record
         ], 201);
+    }
+    /**
+     * Remove the specified receiving record
+     */
+    public function destroy($id)
+    {
+        $user = auth('api')->user();
+
+        // Only allow Receiving department
+        if (strtolower($user->department) !== 'receiving') {
+            return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
+        }
+
+        $record = ReceivingRecord::find($id);
+
+        if (!$record) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Record deleted successfully'
+        ]);
     }
 }

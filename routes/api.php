@@ -15,6 +15,7 @@ Route::middleware(['auth:api', 'department:receiving'])->group(function () {
     Route::post('/receiving-records', [ReceivingRecordController::class, 'store']);
     Route::get('/receiving-records', [ReceivingRecordController::class, 'index']);
     Route::get('/receiving-records/{id}', [ReceivingRecordController::class, 'show']);
+    Route::delete('/receiving-records/{id}', [ReceivingRecordController::class, 'destroy']);
 });
 
 // Department Dashboard Routes - For ALL departments to view their assigned records

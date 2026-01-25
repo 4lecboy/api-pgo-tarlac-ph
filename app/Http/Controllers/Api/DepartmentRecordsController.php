@@ -29,13 +29,17 @@ class DepartmentRecordsController extends Controller
 
         $category = $request->query('category');
 
-        // Get records where department matches user's department
-        // Normalize to lowercase for comparison
-        $query = ReceivingRecord::with(['user', 'processedBy'])
-            ->whereRaw('LOWER(department) = ?', [strtolower($user->department)]);
+        // Get records
+        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user']);
+
+        // Only filter by department if NOT in 'receiving' department
+        if (strtolower($user->department) !== 'receiving') {
+            $query->whereRaw('LOWER(department) = ?', [strtolower($user->department)]);
+        }
 
         // Filter by category if provided
-        if ($category) {
+        // Special case: If user is 'receiving' and category is 'Receiving', show all records (Master List)
+        if ($category && (strtolower($user->department) !== 'receiving' || strtolower($category) !== 'receiving')) {
             $query->where('category', $category);
         }
 
@@ -68,9 +72,14 @@ class DepartmentRecordsController extends Controller
             ], 403);
         }
 
-        $record = ReceivingRecord::with(['user', 'processedBy'])
-            ->whereRaw('LOWER(department) = ?', [strtolower($user->department)])
-            ->find($id);
+        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user']);
+
+        // Only filter by department if NOT in 'receiving' department
+        if (strtolower($user->department) !== 'receiving') {
+            $query->whereRaw('LOWER(department) = ?', [strtolower($user->department)]);
+        }
+
+        $record = $query->find($id);
 
         if (!$record) {
             return response()->json([
@@ -103,9 +112,14 @@ class DepartmentRecordsController extends Controller
             ], 403);
         }
 
-        // Find record assigned to this department
-        $record = ReceivingRecord::whereRaw('LOWER(department) = ?', [strtolower($user->department)])
-            ->find($id);
+        $query = ReceivingRecord::query();
+
+        // Only filter by department if NOT in 'receiving' department
+        if (strtolower($user->department) !== 'receiving') {
+            $query->whereRaw('LOWER(department) = ?', [strtolower($user->department)]);
+        }
+
+        $record = $query->find($id);
 
         if (!$record) {
             return response()->json([
@@ -113,22 +127,56 @@ class DepartmentRecordsController extends Controller
             ], 404);
         }
 
+        $isReceiving = strtolower($user->department) === 'receiving';
+
         $validated = $request->validate([
+            'control_no' => 'nullable|string',
+            'date' => 'nullable|date',
+            'particulars' => 'nullable|string',
+            'department' => 'nullable|string',
+            'organization_barangay' => 'nullable|string',
+            'municipality_address' => 'nullable|string',
+            'name' => 'nullable|string',
+            'contact' => 'nullable|string',
+            'action_taken' => 'nullable|string',
+            'amount_approved' => 'nullable|numeric',
             'district' => 'nullable|string',
             'category' => 'nullable|string',
             'type' => 'nullable|string',
             'requisitioner' => 'nullable|string',
             'served_request' => 'nullable|string',
             'remarks' => 'nullable|string',
+            'new_remark' => 'nullable|string',
             'status' => 'nullable|in:pending,approved,disapproved,served,on process,for releasing',
         ]);
 
+        // Restrict certain fields for non-receiving departments
+        if (!$isReceiving) {
+            unset($validated['status']);
+            unset($validated['department']);
+            unset($validated['category']);
+        }
+
         // Add processing metadata
-        $validated['processed_by_user_id'] = $user->id;
-        $validated['processed_at'] = now();
+        if ($request->has('status') || $request->has('remarks') || $request->has('action_taken') || $request->has('new_remark')) {
+            $validated['processed_by_user_id'] = $user->id;
+            $validated['processed_at'] = now();
+        }
+
+        // Handle new remark if provided
+        if ($request->filled('new_remark')) {
+            \App\Models\RecordRemark::create([
+                'receiving_record_id' => $record->id,
+                'user_id' => $user->id,
+                'remark' => $request->new_remark
+            ]);
+            
+            // Optionally update the main 'remarks' column for backward compatibility or overview
+            $validated['remarks'] = $request->new_remark;
+        }
 
         $record->update($validated);
-        $record->load(['user', 'processedBy']);
+        $record->load(['user', 'processedBy', 'remarksHistory.user']);
 
         return response()->json([
             'message' => 'Record updated successfully',
@@ -157,7 +205,12 @@ class DepartmentRecordsController extends Controller
 
         $deptLower = strtolower($user->department);
 
-        $baseQuery = ReceivingRecord::whereRaw('LOWER(department) = ?', [$deptLower]);
+        $baseQuery = ReceivingRecord::query();
+
+        // Only filter by department if NOT in 'receiving' department
+        if ($deptLower !== 'receiving') {
+            $baseQuery->whereRaw('LOWER(department) = ?', [$deptLower]);
+        }
 
         $stats = [
             'total' => (clone $baseQuery)->count(),
@@ -172,8 +225,12 @@ class DepartmentRecordsController extends Controller
         ];
 
         // Group by category counts
-        $categoryCounts = ReceivingRecord::whereRaw('LOWER(department) = ?', [$deptLower])
-            ->selectRaw('category, count(*) as count')
+        $categoryQuery = ReceivingRecord::query();
+        if ($deptLower !== 'receiving') {
+            $categoryQuery->whereRaw('LOWER(department) = ?', [$deptLower]);
+        }
+
+        $categoryCounts = $categoryQuery->selectRaw('category, count(*) as count')
             ->whereNotNull('category')
             ->groupBy('category')
             ->pluck('count', 'category');
