@@ -80,6 +80,7 @@ class ReceivingRecordController extends Controller
             'contact' => 'nullable|string',
             'action_taken' => 'nullable|string',
             'amount_approved' => 'nullable|numeric',
+            'district' => 'nullable|string',
             'status' => 'required|in:pending,approved,disapproved,served,on process,for releasing',
             'requisitioner' => 'nullable|string',
             'served_request' => 'nullable|string',
