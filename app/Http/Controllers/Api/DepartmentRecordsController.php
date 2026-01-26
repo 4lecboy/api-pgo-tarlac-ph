@@ -30,7 +30,7 @@ class DepartmentRecordsController extends Controller
         $category = $request->query('category');
 
         // Get records
-        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user']);
+        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user', 'images']);
 
         // Only filter by department if NOT in 'receiving' department
         if (strtolower($user->department) !== 'receiving') {
@@ -72,7 +72,7 @@ class DepartmentRecordsController extends Controller
             ], 403);
         }
 
-        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user']);
+        $query = ReceivingRecord::with(['user', 'processedBy', 'remarksHistory.user', 'images']);
 
         // Only filter by department if NOT in 'receiving' department
         if (strtolower($user->department) !== 'receiving') {
@@ -136,6 +136,7 @@ class DepartmentRecordsController extends Controller
             'department' => 'nullable|string',
             'organization_barangay' => 'nullable|string',
             'municipality_address' => 'nullable|string',
+            'province' => 'nullable|string',
             'name' => 'nullable|string',
             'contact' => 'nullable|string',
             'action_taken' => 'nullable|string',
@@ -148,6 +149,8 @@ class DepartmentRecordsController extends Controller
             'remarks' => 'nullable|string',
             'new_remark' => 'nullable|string',
             'status' => 'nullable|in:pending,approved,disapproved,served,on process,for releasing',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         // Restrict certain fields for non-receiving departments
@@ -175,8 +178,19 @@ class DepartmentRecordsController extends Controller
             $validated['remarks'] = $request->new_remark;
         }
 
+        // Handle multiple image uploads
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('documents', 'public');
+                \App\Models\DocumentImage::create([
+                    'receiving_record_id' => $record->id,
+                    'file_path' => $path,
+                ]);
+            }
+        }
+
         $record->update($validated);
-        $record->load(['user', 'processedBy', 'remarksHistory.user']);
+        $record->load(['user', 'processedBy', 'remarksHistory.user', 'images']);
 
         return response()->json([
             'message' => 'Record updated successfully',

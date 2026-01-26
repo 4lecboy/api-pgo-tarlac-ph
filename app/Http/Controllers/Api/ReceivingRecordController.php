@@ -21,7 +21,7 @@ class ReceivingRecordController extends Controller
         }
 
         // Get all records with user information, ordered by latest first
-        $records = ReceivingRecord::with(['user', 'remarksHistory.user'])
+        $records = ReceivingRecord::with(['user', 'remarksHistory.user', 'images'])
             ->orderBy('created_at', 'desc')
             ->paginate(15); // 15 records per page
 
@@ -43,7 +43,7 @@ class ReceivingRecordController extends Controller
             return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
         }
 
-        $record = ReceivingRecord::with(['user', 'remarksHistory.user'])->find($id);
+        $record = ReceivingRecord::with(['user', 'remarksHistory.user', 'images'])->find($id);
 
         if (!$record) {
             return response()->json(['error' => 'Record not found'], 404);
@@ -76,6 +76,7 @@ class ReceivingRecordController extends Controller
             'type' => 'nullable|string',
             'organization_barangay' => 'nullable|string',
             'municipality_address' => 'nullable|string',
+            'province' => 'nullable|string',
             'name' => 'nullable|string',
             'contact' => 'nullable|string',
             'action_taken' => 'nullable|string',
@@ -85,11 +86,24 @@ class ReceivingRecordController extends Controller
             'requisitioner' => 'nullable|string',
             'served_request' => 'nullable|string',
             'remarks' => 'nullable|string',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         $validated['user_id'] = $user->id;
 
         $record = ReceivingRecord::create($validated);
+
+        // Handle multiple image uploads
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('documents', 'public');
+                \App\Models\DocumentImage::create([
+                    'receiving_record_id' => $record->id,
+                    'file_path' => $path,
+                ]);
+            }
+        }
 
         // Add initial remark if provided
         if (!empty($validated['remarks'])) {
@@ -100,8 +114,8 @@ class ReceivingRecordController extends Controller
             ]);
         }
 
-        // Load relationships including remarks history
-        $record->load(['user', 'remarksHistory.user']);
+        // Load relationships including remarks history and images
+        $record->load(['user', 'remarksHistory.user', 'images']);
 
         return response()->json([
             'message' => 'Record created successfully',

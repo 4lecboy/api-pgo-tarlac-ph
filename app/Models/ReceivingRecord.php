@@ -30,6 +30,7 @@ class ReceivingRecord extends Model
         'remarks',
         'processed_by_user_id',
         'processed_at',
+        'province',
     ];
 
     protected $casts = [
@@ -37,6 +38,14 @@ class ReceivingRecord extends Model
         'amount_approved' => 'decimal:2',
         'processed_at' => 'datetime',
     ];
+
+    /**
+     * Images associated with the record
+     */
+    public function images()
+    {
+        return $this->hasMany(DocumentImage::class);
+    }
 
     /**
      * User who created the record (Receiving department)
