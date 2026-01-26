@@ -90,6 +90,10 @@ class ReceivingRecordController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
+        if ($validated['status'] === 'approved') {
+            $validated['approved_at'] = now();
+        }
+
         $validated['user_id'] = $user->id;
 
         $record = ReceivingRecord::create($validated);
@@ -122,6 +126,87 @@ class ReceivingRecordController extends Controller
             'record' => $record
         ], 201);
     }
+    /**
+     * Update the specified receiving record
+     */
+    public function update(Request $request, $id)
+    {
+        $user = auth('api')->user();
+
+        // Only allow Receiving department
+        if (strtolower($user->department) !== 'receiving') {
+            return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
+        }
+
+        $record = ReceivingRecord::find($id);
+
+        if (!$record) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'control_no' => 'nullable|string|unique:receiving_records,control_no,' . $id,
+            'date' => 'nullable|date',
+            'particulars' => 'nullable|string',
+            'department' => 'nullable|string',
+            'category' => 'nullable|string',
+            'type' => 'nullable|string',
+            'organization_barangay' => 'nullable|string',
+            'municipality_address' => 'nullable|string',
+            'province' => 'nullable|string',
+            'name' => 'nullable|string',
+            'contact' => 'nullable|string',
+            'action_taken' => 'nullable|string',
+            'amount_approved' => 'nullable|numeric',
+            'district' => 'nullable|string',
+            'status' => 'nullable|in:pending,approved,disapproved,served,on process,for releasing',
+            'requisitioner' => 'nullable|string',
+            'served_request' => 'nullable|string',
+            'remarks' => 'nullable|string',
+            'new_remark' => 'nullable|string',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        // Add processing metadata
+        $validated['processed_by_user_id'] = $user->id;
+        $validated['processed_at'] = now();
+
+        // Handle new remark if provided
+        if ($request->filled('new_remark')) {
+            \App\Models\RecordRemark::create([
+                'receiving_record_id' => $record->id,
+                'user_id' => $user->id,
+                'remark' => $request->new_remark
+            ]);
+            $validated['remarks'] = $request->new_remark;
+        }
+
+        // Handle multiple image uploads
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('documents', 'public');
+                \App\Models\DocumentImage::create([
+                    'receiving_record_id' => $record->id,
+                    'file_path' => $path,
+                ]);
+            }
+        }
+
+        // Set approved_at when status changes to 'approved' for the first time
+        if (isset($validated['status']) && $validated['status'] === 'approved' && $record->status !== 'approved' && is_null($record->approved_at)) {
+            $validated['approved_at'] = now();
+        }
+
+        $record->update($validated);
+        $record->load(['user', 'remarksHistory.user', 'images']);
+
+        return response()->json([
+            'message' => 'Record updated successfully',
+            'record' => $record
+        ]);
+    }
+
     /**
      * Remove the specified receiving record
      */

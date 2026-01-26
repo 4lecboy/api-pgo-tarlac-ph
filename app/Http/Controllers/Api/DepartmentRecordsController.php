@@ -155,15 +155,20 @@ class DepartmentRecordsController extends Controller
 
         // Restrict certain fields for non-receiving departments
         if (!$isReceiving) {
-            unset($validated['status']);
+            // Non-receiving departments CAN update status (e.g. to 'on process', 'served')
+            // but but we still keep department and category restricted as these are routing fields
             unset($validated['department']);
             unset($validated['category']);
         }
 
-        // Add processing metadata
-        if ($request->has('status') || $request->has('remarks') || $request->has('action_taken') || $request->has('new_remark')) {
-            $validated['processed_by_user_id'] = $user->id;
-            $validated['processed_at'] = now();
+        // Add processing metadata if significant fields are updated
+        $metadataFields = ['status', 'remarks', 'action_taken', 'new_remark', 'amount_approved'];
+        foreach ($metadataFields as $field) {
+            if ($request->has($field)) {
+                $validated['processed_by_user_id'] = $user->id;
+                $validated['processed_at'] = now();
+                break;
+            }
         }
 
         // Handle new remark if provided
@@ -187,6 +192,11 @@ class DepartmentRecordsController extends Controller
                     'file_path' => $path,
                 ]);
             }
+        }
+
+        // Set approved_at when status changes to 'approved' for the first time
+        if (isset($validated['status']) && $validated['status'] === 'approved' && $record->status !== 'approved' && is_null($record->approved_at)) {
+            $validated['approved_at'] = now();
         }
 
         $record->update($validated);

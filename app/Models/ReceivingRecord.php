@@ -31,12 +31,14 @@ class ReceivingRecord extends Model
         'processed_by_user_id',
         'processed_at',
         'province',
+        'approved_at',
     ];
 
     protected $casts = [
         'date' => 'date',
         'amount_approved' => 'decimal:2',
         'processed_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     /**
