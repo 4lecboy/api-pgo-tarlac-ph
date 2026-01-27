@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DepartmentRecordsController;
+use App\Http\Controllers\Api\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReceivingRecordController;
 
@@ -24,4 +25,12 @@ Route::middleware('auth:api')->prefix('my-department')->group(function () {
     Route::get('/records/{id}', [DepartmentRecordsController::class, 'show']);
     Route::put('/records/{id}', [DepartmentRecordsController::class, 'update']);
     Route::get('/statistics', [DepartmentRecordsController::class, 'statistics']);
+});
+
+// Dashboard Analytics Routes
+Route::middleware('auth:api')->prefix('dashboard')->group(function () {
+    Route::get('/quick-stats', [DashboardController::class, 'quickStats']);
+    Route::get('/incoming-analytics', [DashboardController::class, 'incomingAnalytics']);
+    Route::get('/outgoing-analytics', [DashboardController::class, 'outgoingAnalytics']);
+    Route::get('/orm-analytics', [DashboardController::class, 'ormAnalytics']);
 });
