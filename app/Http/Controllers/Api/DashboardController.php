@@ -185,12 +185,10 @@ class DashboardController extends Controller
         $analytics = [];
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-        // Get current year
-        $year = now()->year;
-
-        foreach (range(0, 11) as $index) {
-            $monthStart = now()->month($index + 1)->startOfMonth();
-            $monthEnd = now()->month($index + 1)->endOfMonth();
+        // Get data for each month of the current year
+        for ($monthIndex = 0; $monthIndex < 12; $monthIndex++) {
+            $monthStart = now()->startOfYear()->addMonths($monthIndex)->startOfMonth();
+            $monthEnd = now()->startOfYear()->addMonths($monthIndex)->endOfMonth();
 
             $econcern = ReceivingRecord::where('category', 'E-Concern')
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
@@ -205,7 +203,7 @@ class DashboardController extends Controller
                 ->count();
 
             $analytics[] = [
-                'month' => $months[$index],
+                'month' => $months[$monthIndex],
                 'econcern' => $econcern,
                 'fbPages' => $fbPages,
                 'contact' => $contact,
