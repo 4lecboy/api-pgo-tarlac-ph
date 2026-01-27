@@ -5,11 +5,18 @@ use App\Http\Controllers\Api\DepartmentRecordsController;
 use App\Http\Controllers\Api\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReceivingRecordController;
+use App\Http\Controllers\Api\SmsController;
 
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
 Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
 Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
+
+// SMS Routes
+Route::middleware('auth:api')->prefix('sms')->group(function () {
+    Route::post('send-one', [SmsController::class, 'sendOne']);
+    Route::get('balance', [SmsController::class, 'getBalance']);
+});
 
 // Receiving Records Routes - Only for Receiving department
 Route::middleware(['auth:api', 'department:receiving'])->group(function () {

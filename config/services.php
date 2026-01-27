@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'txtbox' => [
+        'url' => env('TXTBOX_URL', 'https://txtbox.com/api/send'),
+        'api_key' => env('TXTBOX_API_KEY'),
+    ],
+
 ];
