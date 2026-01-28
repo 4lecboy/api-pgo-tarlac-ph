@@ -154,9 +154,17 @@ class DepartmentRecordsController extends Controller
         ]);
 
         // Restrict certain fields for non-receiving departments
-        if (!$isReceiving) {
-            // Non-receiving departments CAN update status (e.g. to 'on process', 'served')
-            // but but we still keep department and category restricted as these are routing fields
+        // Restrict fields based on department role
+        if ($isReceiving) {
+            // Receiving Department:
+            // CAN update routing (department, category) and details
+            // CANNOT update status or approved amount (these are for assigned departments)
+            unset($validated['status']);
+            unset($validated['amount_approved']);
+        } else {
+            // Assigned Departments:
+            // CAN update status and approved amount
+            // CANNOT update routing fields (department, category)
             unset($validated['department']);
             unset($validated['category']);
         }

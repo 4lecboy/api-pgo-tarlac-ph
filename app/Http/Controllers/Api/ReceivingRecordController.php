@@ -80,7 +80,11 @@ class ReceivingRecordController extends Controller
             'date' => 'required|date',
             'particulars' => 'nullable|string',
             'department' => 'required|string',
-            'category' => 'nullable|string',
+            'category' => ['required', 'string', function ($attribute, $value, $fail) {
+                if (in_array($value, ['Receiving', 'Social Services'])) {
+                    $fail('Documents cannot be assigned to ' . $value . '.');
+                }
+            }],
             'type' => 'nullable|string',
             'organization_barangay' => 'nullable|string',
             'municipality_address' => 'nullable|string',
@@ -88,9 +92,9 @@ class ReceivingRecordController extends Controller
             'name' => 'nullable|string',
             'contact' => 'nullable|string',
             'action_taken' => 'nullable|string',
-            'amount_approved' => 'nullable|numeric',
+            // 'amount_approved' => 'nullable|numeric', // Removed as it's forced to null
             'district' => 'nullable|string',
-            'status' => 'required|in:pending,approved,disapproved,served,on process,for releasing',
+            // 'status' => 'required|in:pending,approved,disapproved,served,on process,for releasing', // Removed as it's forced to 'pending'
             'requisitioner' => 'nullable|string',
             'served_request' => 'nullable|string',
             'remarks' => 'nullable|string',
@@ -98,9 +102,9 @@ class ReceivingRecordController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        if ($validated['status'] === 'approved') {
-            $validated['approved_at'] = now();
-        }
+        // Force status to 'pending' and amount_approved to null on creation
+        $validated['status'] = 'pending';
+        $validated['amount_approved'] = null;
 
         $validated['user_id'] = $user->id;
 
@@ -157,7 +161,11 @@ class ReceivingRecordController extends Controller
             'date' => 'nullable|date',
             'particulars' => 'nullable|string',
             'department' => 'nullable|string',
-            'category' => 'nullable|string',
+            'category' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                if (in_array($value, ['Receiving', 'Social Services'])) {
+                    $fail('Documents cannot be assigned to ' . $value . '.');
+                }
+            }],
             'type' => 'nullable|string',
             'organization_barangay' => 'nullable|string',
             'municipality_address' => 'nullable|string',
@@ -175,6 +183,10 @@ class ReceivingRecordController extends Controller
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
+
+        // Unset status and amount_approved from validated data as per instruction
+        unset($validated['status']);
+        unset($validated['amount_approved']);
 
         // Add processing metadata
         $validated['processed_by_user_id'] = $user->id;

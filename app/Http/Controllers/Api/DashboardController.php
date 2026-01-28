@@ -105,19 +105,27 @@ class DashboardController extends Controller
         
         // Get all categories with their status counts
         $categories = [
+            'Receiving',
             'Barangay Affairs',
             'Financial Assistance',
-            'Social Services',
             'Use of Facilities',
+            'Use of Vehicle and Ambulance',
             'Appointment/Meeting',
-            'Other Request',
-            'Use of Vehicle and Ambulance'
+            'Other Request'
         ];
 
         $analytics = [];
 
         foreach ($categories as $category) {
-            $query = ReceivingRecord::where('category', $category);
+            $query = ReceivingRecord::query();
+            
+            // Special case: If it's the 'Receiving' category and user is from Receiving department,
+            // we show the Master List stats (all categories).
+            if ($category === 'Receiving' && $deptLower === 'receiving') {
+                // No category filter
+            } else {
+                $query->where('category', $category);
+            }
             
             if ($deptLower !== 'receiving') {
                 $query->whereRaw('LOWER(department) = ?', [$deptLower]);
