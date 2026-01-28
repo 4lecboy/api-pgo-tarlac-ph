@@ -148,7 +148,7 @@ class DepartmentRecordsController extends Controller
             'served_request' => 'nullable|string',
             'remarks' => 'nullable|string',
             'new_remark' => 'nullable|string',
-            'status' => 'nullable|in:pending,approved,disapproved,served,on process,for releasing',
+            'status' => 'nullable|in:pending,approved,disapproved,served,on process,for releasing,completed',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
@@ -244,6 +244,7 @@ class DepartmentRecordsController extends Controller
             'served' => (clone $baseQuery)->where('status', 'served')->count(),
             'on_process' => (clone $baseQuery)->where('status', 'on process')->count(),
             'for_releasing' => (clone $baseQuery)->where('status', 'for releasing')->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
             'processed' => (clone $baseQuery)->whereNotNull('processed_by_user_id')->count(),
             'unprocessed' => (clone $baseQuery)->whereNull('processed_by_user_id')->count(),
         ];

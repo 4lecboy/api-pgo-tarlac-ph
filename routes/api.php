@@ -24,6 +24,7 @@ Route::middleware(['auth:api', 'department:receiving'])->group(function () {
     Route::post('/receiving-records', [ReceivingRecordController::class, 'store']);
     Route::get('/receiving-records', [ReceivingRecordController::class, 'index']);
     Route::get('/receiving-records/{id}', [ReceivingRecordController::class, 'show']);
+    Route::put('/receiving-records/{id}/complete', [ReceivingRecordController::class, 'markAsCompleted']);
     Route::delete('/receiving-records/{id}', [ReceivingRecordController::class, 'destroy']);
 });
 

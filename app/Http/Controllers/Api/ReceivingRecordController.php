@@ -27,7 +27,15 @@ class ReceivingRecordController extends Controller
 
         return response()->json([
             'message' => 'Records retrieved successfully',
-            'records' => $records
+            'records' => $records,
+            'assignable_departments' => [
+                'Barangay Affairs',
+                'Financial Assistance',
+                'Use Of Facilities',
+                'Appointment Meeting',
+                'Use of Vehicle Ambulance',
+                'Other Request'
+            ]
         ]);
     }
 
@@ -229,6 +237,47 @@ class ReceivingRecordController extends Controller
 
         return response()->json([
             'message' => 'Record deleted successfully'
+        ]);
+    }
+
+    /**
+     * Mark the record as completed (Final logging by Receiving Dept)
+     */
+    public function markAsCompleted($id)
+    {
+        $user = auth('api')->user();
+
+        // Only allow Receiving department
+        if (strtolower($user->department) !== 'receiving') {
+            return response()->json(['error' => 'Forbidden: Access denied for your department'], 403);
+        }
+
+        $record = ReceivingRecord::find($id);
+
+        if (!$record) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        // Only allowed if status is approved or disapproved
+        if (!in_array($record->status, ['approved', 'disapproved'])) {
+            return response()->json(['error' => 'Record must be Approved or Disapproved before final logging'], 400);
+        }
+
+        $record->update([
+            'status' => 'completed',
+            'processed_by_user_id' => $user->id,
+            'processed_at' => now(),
+        ]);
+
+        \App\Models\RecordRemark::create([
+            'receiving_record_id' => $record->id,
+            'user_id' => $user->id,
+            'remark' => 'Final log completed. Status set to Completed.'
+        ]);
+
+        return response()->json([
+            'message' => 'Record marked as completed successfully',
+            'record' => $record->load(['user', 'remarksHistory.user', 'images'])
         ]);
     }
 }
