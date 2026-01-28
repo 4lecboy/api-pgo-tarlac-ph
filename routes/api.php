@@ -45,3 +45,12 @@ Route::middleware('auth:api')->prefix('dashboard')->group(function () {
     Route::get('/municipality-stats', [DashboardController::class, 'municipalityStats']);
     Route::get('/municipality/{municipality}/records', [DashboardController::class, 'municipalityRecords']);
 });
+
+// User Management Routes - Admin Only
+Route::middleware(['auth:api', 'role:admin'])->prefix('users')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\UserController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\Api\UserController::class, 'store']);
+    Route::get('/{id}', [App\Http\Controllers\Api\UserController::class, 'show']);
+    Route::put('/{id}', [App\Http\Controllers\Api\UserController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\UserController::class, 'destroy']);
+});
