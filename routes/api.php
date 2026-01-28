@@ -16,6 +16,7 @@ Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
 Route::middleware('auth:api')->prefix('sms')->group(function () {
     Route::post('send-one', [SmsController::class, 'sendOne']);
     Route::get('balance', [SmsController::class, 'getBalance']);
+    Route::get('logs', [SmsController::class, 'getLogs']);
 });
 
 // Receiving Records Routes - Only for Receiving department
