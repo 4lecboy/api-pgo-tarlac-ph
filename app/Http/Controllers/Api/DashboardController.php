@@ -212,4 +212,166 @@ class DashboardController extends Controller
 
         return response()->json($analytics);
     }
+
+    /**
+     * Get municipality statistics for heatmap visualization
+     */
+    public function municipalityStats()
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Unauthenticated',
+            ], 401);
+        }
+
+        // Tarlac Province municipalities with coordinates for map
+        $tarlacMunicipalities = [
+            'Anao' => ['lat' => 15.7322, 'lng' => 120.6283],
+            'Bamban' => ['lat' => 15.2833, 'lng' => 120.5580],
+            'Camiling' => ['lat' => 15.6847, 'lng' => 120.4114],
+            'Capas' => ['lat' => 15.3289, 'lng' => 120.5911],
+            'Concepcion' => ['lat' => 15.3264, 'lng' => 120.6558],
+            'Gerona' => ['lat' => 15.6067, 'lng' => 120.5000],
+            'La Paz' => ['lat' => 15.4428, 'lng' => 120.7283],
+            'Mayantoc' => ['lat' => 15.6175, 'lng' => 120.3761],
+            'Moncada' => ['lat' => 15.7339, 'lng' => 120.5700],
+            'Paniqui' => ['lat' => 15.6667, 'lng' => 120.5833],
+            'Pura' => ['lat' => 15.6225, 'lng' => 120.6522],
+            'Ramos' => ['lat' => 15.6636, 'lng' => 120.6397],
+            'San Clemente' => ['lat' => 15.7108, 'lng' => 120.3608],
+            'San Jose' => ['lat' => 15.4706, 'lng' => 120.4953],
+            'San Manuel' => ['lat' => 15.8272, 'lng' => 120.6133],
+            'Santa Ignacia' => ['lat' => 15.6117, 'lng' => 120.4378],
+            'Tarlac City' => ['lat' => 15.4866, 'lng' => 120.5941],
+            'Victoria' => ['lat' => 15.5750, 'lng' => 120.6800],
+        ];
+
+        $stats = [];
+
+        foreach ($tarlacMunicipalities as $municipality => $coords) {
+            $query = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%");
+            
+            $total = (clone $query)->count();
+            $pending = (clone $query)->whereIn('status', ['pending', 'on process'])->count();
+            $approved = (clone $query)->whereIn('status', ['approved', 'served', 'for releasing'])->count();
+            $rejected = (clone $query)->where('status', 'disapproved')->count();
+
+            $stats[] = [
+                'municipality' => $municipality,
+                'lat' => $coords['lat'],
+                'lng' => $coords['lng'],
+                'total' => $total,
+                'pending' => $pending,
+                'approved' => $approved,
+                'rejected' => $rejected,
+            ];
+        }
+
+        // Sort by total requests descending
+        usort($stats, function($a, $b) {
+            return $b['total'] - $a['total'];
+        });
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Get all records for a specific municipality
+     */
+    public function municipalityRecords(Request $request, string $municipality)
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $query = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%");
+
+        // Apply filters
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('barangay') && $request->barangay) {
+            $query->where('organization_barangay', 'LIKE', "%{$request->barangay}%");
+        }
+
+        if ($request->has('department') && $request->department) {
+            $query->where('department', $request->department);
+        }
+
+        if ($request->has('category') && $request->category) {
+            $query->where('category', $request->category);
+        }
+
+        // Get records with pagination
+        $perPage = $request->get('per_page', 15);
+        $records = $query->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        // Transform the data
+        $records->getCollection()->transform(function ($record) {
+            return [
+                'id' => $record->id,
+                'control_no' => $record->control_no,
+                'date' => $record->date?->format('Y-m-d'),
+                'name' => $record->name,
+                'organization_barangay' => $record->organization_barangay,
+                'municipality_address' => $record->municipality_address,
+                'category' => $record->category,
+                'department' => $record->department,
+                'status' => $record->status,
+                'particulars' => $record->particulars,
+                'contact' => $record->contact,
+                'created_at' => $record->created_at?->format('Y-m-d H:i:s'),
+            ];
+        });
+
+        // Get summary stats
+        $baseQuery = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%");
+        $summary = [
+            'total' => (clone $baseQuery)->count(),
+            'pending' => (clone $baseQuery)->whereIn('status', ['pending', 'on process'])->count(),
+            'approved' => (clone $baseQuery)->whereIn('status', ['approved', 'served', 'for releasing'])->count(),
+            'rejected' => (clone $baseQuery)->where('status', 'disapproved')->count(),
+        ];
+
+        // Get unique barangays and departments for filters
+        $barangays = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%")
+            ->whereNotNull('organization_barangay')
+            ->distinct()
+            ->pluck('organization_barangay')
+            ->filter()
+            ->values();
+
+        $departments = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%")
+            ->whereNotNull('department')
+            ->distinct()
+            ->pluck('department')
+            ->filter()
+            ->values();
+
+        $categories = ReceivingRecord::where('municipality_address', 'LIKE', "%{$municipality}%")
+            ->whereNotNull('category')
+            ->distinct()
+            ->pluck('category')
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'municipality' => $municipality,
+            'summary' => $summary,
+            'filters' => [
+                'barangays' => $barangays,
+                'departments' => $departments,
+                'categories' => $categories,
+            ],
+            'records' => $records,
+        ]);
+    }
 }

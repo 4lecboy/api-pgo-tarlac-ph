@@ -41,4 +41,6 @@ Route::middleware('auth:api')->prefix('dashboard')->group(function () {
     Route::get('/incoming-analytics', [DashboardController::class, 'incomingAnalytics']);
     Route::get('/outgoing-analytics', [DashboardController::class, 'outgoingAnalytics']);
     Route::get('/orm-analytics', [DashboardController::class, 'ormAnalytics']);
+    Route::get('/municipality-stats', [DashboardController::class, 'municipalityStats']);
+    Route::get('/municipality/{municipality}/records', [DashboardController::class, 'municipalityRecords']);
 });
