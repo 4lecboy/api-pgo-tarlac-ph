@@ -19,7 +19,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
+    'allowed_origins' => [
+    'http://localhost:3000', // Keep for local dev
+    'https://pgo-next.vercel.app', // Your actual Vercel domain
+        ],
 
     'allowed_origins_patterns' => [],
 
