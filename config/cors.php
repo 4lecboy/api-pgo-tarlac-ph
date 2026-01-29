@@ -20,9 +20,9 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-    'http://localhost:3000', // Keep for local dev
-    'https://pgo-next.vercel.app', // Your actual Vercel domain
-        ],
+        'http://localhost:3000',              // For your local testing
+        'https://pgo-tarlac-ph.vercel.app',   // Your Vercel App (Exact spelling, NO trailing slash)
+    ],
 
     'allowed_origins_patterns' => [],
 
