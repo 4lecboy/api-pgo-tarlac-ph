@@ -34,7 +34,8 @@ class CheckRole
         
         // Normalize roles to lowercase for comparison
         $allowedRoles = array_map('strtolower', $roles);
-        $userRole = strtolower($user->role->value);
+        $userRoleValue = $user->role instanceof \App\Enums\UserRole ? $user->role->value : $user->role;
+        $userRole = strtolower($userRoleValue);
 
         if (!in_array($userRole, $allowedRoles)) {
             return response()->json(['message' => 'Unauthorized. You do not have the required role.'], 403);
