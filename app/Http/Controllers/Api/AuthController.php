@@ -33,6 +33,7 @@ class AuthController extends Controller
     }
 
     $allDepartments = [
+        'IT',
         'Receiving',
         'Social Service',
         'Barangay Affairs',
@@ -92,6 +93,33 @@ class AuthController extends Controller
         }
     }
 
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|string|in:super admin,admin,user',
+            'department' => 'nullable|string|max:255',
+        ]);
+
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'department' => $validated['department'],
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'message' => 'User successfully registered',
+            'user' => $user
+        ], 201);
+    }
 
     // AUTHENTICATED USER
     public function me()

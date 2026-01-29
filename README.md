@@ -64,3 +64,15 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Uncomment in xampp php.ini
+
+Uncomment ;extension=gd to extension=gd.
+
+Uncomment ;extension=zip to extension=zip.
+
+Uncomment ;extension=sodium to extension=sodium.
+
+Uncomment ;extension=sodium to extension=pdo_pgsql.
+
+Uncomment ;extension=sodium to extension=pgsql.
