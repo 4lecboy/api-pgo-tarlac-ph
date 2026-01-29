@@ -15,13 +15,18 @@ class DepartmentAccess
             return response()->json(['message' => 'Unauthenticated (DepartmentAccess)'], 401);
         }
 
+        // Super Admin has all access
+        if ($user->isSuperAdmin()) {
+             return $next($request);
+        }
+
         // Normalize department names
         $userDept = strtolower($user->department ?? '');
         $allowed = array_map('strtolower', $departments);
 
         if (!in_array($userDept, $allowed)) {
             return response()->json([
-                'error' => 'Forbidden: Access denied for your department',
+                'message' => 'Forbidden: Access denied for your department',
                 'user_department' => $user->department,
                 'required_departments' => $departments
             ], 403);

@@ -15,7 +15,13 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        $currentUser = auth('api')->user();
         $query = User::query();
+
+        // Scope by department if not Super Admin
+        if (!$currentUser->isSuperAdmin()) {
+            $query->where('department', $currentUser->department);
+        }
 
         // Search by name or email
         if ($request->has('search')) {
@@ -32,8 +38,8 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
-        // Filter by department
-        if ($request->has('department')) {
+        // Filter by department (Super Admin only can filter by specific department)
+        if ($currentUser->isSuperAdmin() && $request->has('department')) {
             $query->where('department', $request->department);
         }
 
@@ -47,19 +53,34 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $currentUser = auth('api')->user();
+
+        $rules = [
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'middle_name' => 'nullable|string',
-            'role' => 'required|string|in:admin,user,viewer', // Enforce roles
-            'department' => 'required|string',
+            'role' => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\UserRole::class)],
+            'department' => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\Department::class)],
             'position' => 'nullable|string',
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
+
+        // Enforce department for non-Super Admins
+        if (!$currentUser->isSuperAdmin()) {
+            if (strtolower($validated['department']) !== strtolower($currentUser->department)) {
+                return response()->json(['message' => 'You can only create users in your own department.'], 403);
+            }
+            // Optional: Prevent Admin from creating Super Admin
+            if ($validated['role'] === \App\Enums\UserRole::SUPER_ADMIN->value) {
+                return response()->json(['message' => 'You cannot create a Super Admin.'], 403);
+            }
+        }
 
         $validated['password'] = Hash::make($validated['password']);
-        $validated['status'] = 'active'; // Default status
+        $validated['status'] = 'active';
 
         $user = User::create($validated);
 
@@ -74,7 +95,13 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
+        $currentUser = auth('api')->user();
         $user = User::findOrFail($id);
+
+        if (!$currentUser->isSuperAdmin() && strtolower($user->department) !== strtolower($currentUser->department ?? '')) {
+             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         return response()->json($user);
     }
 
@@ -83,19 +110,37 @@ class UserController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $currentUser = auth('api')->user();
         $user = User::findOrFail($id);
 
-        $validated = $request->validate([
+        // Check Access
+        if (!$currentUser->isSuperAdmin() && strtolower($user->department) !== strtolower($currentUser->department ?? '')) {
+             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $rules = [
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
             'first_name' => 'sometimes|string',
             'last_name' => 'sometimes|string',
             'middle_name' => 'nullable|string',
-            'role' => 'sometimes|string|in:admin,user,viewer',
-            'department' => 'sometimes|string',
+            'role' => ['sometimes', \Illuminate\Validation\Rule::enum(\App\Enums\UserRole::class)],
+            'department' => ['sometimes', \Illuminate\Validation\Rule::enum(\App\Enums\Department::class)],
             'position' => 'nullable|string',
             'password' => 'nullable|string|min:8',
             'status' => 'sometimes|in:active,inactive'
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
+
+         // Enforce department/role checks for non-Super Admins
+        if (!$currentUser->isSuperAdmin()) {
+             if (isset($validated['department']) && strtolower($validated['department']) !== strtolower($currentUser->department)) {
+                 return response()->json(['message' => 'You cannot change users to another department.'], 403);
+             }
+             if (isset($validated['role']) && $validated['role'] === \App\Enums\UserRole::SUPER_ADMIN->value) {
+                 return response()->json(['message' => 'You cannot promote to Super Admin.'], 403);
+             }
+        }
 
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -118,7 +163,7 @@ class UserController extends Controller
         
         // Prevent deleting yourself
         if ($user->id === auth('api')->id()) {
-            return response()->json(['error' => 'You cannot delete yourself.'], 403);
+            return response()->json(['message' => 'You cannot delete yourself.'], 403);
         }
 
         $user->delete();

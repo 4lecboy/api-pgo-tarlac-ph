@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'department' => \App\Http\Middleware\DepartmentAccess::class,
             'role' => \App\Http\Middleware\CheckRole::class,
+            'department.consistency' => \App\Http\Middleware\EnsureDepartmentConsistency::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

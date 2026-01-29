@@ -18,10 +18,15 @@ class CheckRole
     public function handle(Request $request, Closure $next, ...$roles)
     {
         if (!auth('api')->check()) {
-            return response()->json(['error' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $user = auth('api')->user();
+
+        // Super Admin has all access
+        if ($user->isSuperAdmin()) {
+            return $next($request);
+        }
 
         // Check if user has one of the required roles
         // We will accept roles as parameters, e.g. 'admin', 'user', 'viewer'
@@ -29,10 +34,10 @@ class CheckRole
         
         // Normalize roles to lowercase for comparison
         $allowedRoles = array_map('strtolower', $roles);
-        $userRole = strtolower($user->role);
+        $userRole = strtolower($user->role->value);
 
         if (!in_array($userRole, $allowedRoles)) {
-            return response()->json(['error' => 'Unauthorized. You do not have the required role.'], 403);
+            return response()->json(['message' => 'Unauthorized. You do not have the required role.'], 403);
         }
 
         return $next($request);

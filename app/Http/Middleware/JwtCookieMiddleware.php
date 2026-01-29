@@ -16,9 +16,18 @@ class JwtCookieMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if (!$request->hasHeader('Authorization') && $request->hasCookie('token')) {
+        // Force Accept JSON to prevent redirects
+        $request->headers->set('Accept', 'application/json');
+
+        if ($request->hasCookie('token')) {
             $token = $request->cookie('token');
-            $request->headers->set('Authorization', 'Bearer ' . $token);
+            // Check if Authorization header is already present
+            if (!$request->hasHeader('Authorization')) {
+                $request->headers->set('Authorization', 'Bearer ' . $token);
+            }
+        } else {
+            // Log for debugging (optional, can be removed later)
+            // \Log::info('JwtCookieMiddleware: No token cookie found.');
         }
 
         return $next($request);
