@@ -158,9 +158,9 @@ class DepartmentRecordsController extends Controller
         if ($isReceiving) {
             // Receiving Department:
             // CAN update routing (department, category) and details
-            // CANNOT update status or approved amount (these are for assigned departments)
-            unset($validated['status']);
-            unset($validated['amount_approved']);
+            // ALSO can update status and approved amount (Requested change)
+            // unset($validated['status']);
+            // unset($validated['amount_approved']);
         } else {
             // Assigned Departments:
             // CAN update status and approved amount
