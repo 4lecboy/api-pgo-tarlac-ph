@@ -35,6 +35,13 @@ class User extends Authenticatable implements JWTSubject
         'role' => \App\Enums\UserRole::class,
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return "{$this->first_name} {$this->last_name}";
+    }
+
     // JWT methods
     public function getJWTIdentifier()
     {

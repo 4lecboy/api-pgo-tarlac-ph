@@ -47,6 +47,14 @@ Route::middleware('auth:api')->prefix('dashboard')->group(function () {
     Route::get('/municipality/{municipality}/records', [DashboardController::class, 'municipalityRecords']);
 });
 
+// Outgoing Records Routes
+Route::middleware('auth:api')->prefix('outgoing')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\OutgoingRecordController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\Api\OutgoingRecordController::class, 'store']);
+    Route::get('/{id}', [App\Http\Controllers\Api\OutgoingRecordController::class, 'show']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\OutgoingRecordController::class, 'destroy']);
+});
+
 // User Management Routes - Admin Only
 Route::middleware(['auth:api', 'role:admin'])->prefix('users')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\UserController::class, 'index']);
